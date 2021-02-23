@@ -1,0 +1,121 @@
+import { game } from "../Game";
+import { ref, onMounted, onUnmounted } from "@vue/runtime-core";
+
+/**
+ * 键盘移动
+ * @param x 初始化x坐标值
+ * @param y 初始化y坐标值
+ * @param speed 移动速度
+ */
+
+const commandType = {
+  upAndDown: "upAndDown",
+  leftAndRight: "leftAndRight",
+};
+
+export const useKeyboardMove = ({ x, y, speed }) => {
+  const moveX = ref(x);
+  const moveY = ref(y);
+
+  // 移动指令集合
+  const moveCommands = [];
+
+  //上
+  const upCommand = {
+    type: commandType.upAndDown,
+    dir: -1,
+    id: 1,
+  };
+
+  //下
+  const downCommand = {
+    type: commandType.upAndDown,
+    dir: 1,
+    id: 2,
+  };
+
+  // 左
+  const leftCommand = {
+    type: commandType.leftAndRight,
+    dir: -1,
+    id: 3,
+  };
+
+  // 右
+  const rightCommand = {
+    type: commandType.leftAndRight,
+    dir: 1,
+    id: 4,
+  };
+
+  // 找到第一个上或下指令
+  const findUpAndDownCommand = () =>
+    moveCommands.find((command) => command.type === commandType.upAndDown);
+  // 找到第一个左或右指令
+  const findLeftAndRightCommand = () =>
+    moveCommands.find((command) => command.type === commandType.leftAndRight);
+
+  // 指令是否已存在
+  const isExistCommand = (command) => {
+    const id = command.id;
+    const result = moveCommands.find((c) => c.id === id);
+    if (result) return true;
+    return false;
+  };
+
+  const handleTicker = () => {
+    const upAndDownCommand = findUpAndDownCommand();
+    if (upAndDownCommand) {
+      moveY.value += speed * upAndDownCommand.dir;
+    }
+
+    const leftAndRightCommand = findLeftAndRightCommand();
+    if (leftAndRightCommand) {
+      moveX.value += speed * leftAndRightCommand.dir;
+    }
+  };
+
+  const removeCommand = (command) => {
+    const id = command.id;
+    const index = moveCommands.findIndex((c) => c.id === id);
+    moveCommands.splice(index, 1);
+  };
+
+  const commandMap = {
+    ArrowLeft: leftCommand,
+    ArrowRight: rightCommand,
+    ArrowUp: upCommand,
+    ArrowDown: downCommand,
+  };
+
+  const handleKeydown = (e) => {
+    const command = commandMap[e.code];
+    if (command && !isExistCommand(command)) {
+      moveCommands.unshift(command);
+    }
+  };
+
+  const handleKeyup = (e) => {
+    const command = commandMap[e.code];
+    if (command) {
+      removeCommand(command);
+    }
+  };
+
+  onMounted(() => {
+    game.ticker.add(handleTicker);
+    window.addEventListener("keydown", handleKeydown);
+    window.addEventListener("keyup", handleKeyup);
+  });
+
+  onUnmounted(() => {
+    game.ticker.remove(handleTicker);
+    window.removeEventListener("keydown", handleKeydown);
+    window.removeEventListener("keyup", handleKeyup);
+  });
+
+  return {
+    x: moveX,
+    y: moveY,
+  };
+};
